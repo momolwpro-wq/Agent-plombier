@@ -1,0 +1,9 @@
+node_modules
+.env
+
+# Configuration locale de l'outil Claude Code (specifique a cette machine, pas du code projet)
+.claude/
+
+# Contient un secret en clair (cle API Brevo) et le numero perso de l'artisan -
+# ne jamais committer sur un depot public. Garder ce fichier en local uniquement.
+workflow-n8n.json
