@@ -40,7 +40,7 @@
   },
 
   "_comment_BEHAVIOR": "=== COMPORTEMENT GENERAL DE L'APPEL ===",
-  "endCallMessage": "Merci de votre appel, [A COMPLETER - Nom de l'entreprise] vous souhaite une bonne journée. Vous allez recevoir un SMS récapitulatif dans quelques instants.",
+  "endCallMessage": "Merci de votre appel, Plomberie Test vous souhaite une bonne journée.",
   "endCallPhrases": [
     "au revoir",
     "merci, à bientôt",
