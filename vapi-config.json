@@ -4,11 +4,11 @@
   "name": "Agent Vocal - Plomberie Test",
   "_comment_name": "Nom limite a 40 caracteres max par l'API Vapi (contrainte constatee lors de la creation reelle de l'assistant). Renommer ici si l'entreprise change de nom (garder <= 40 caracteres).",
 
-  "_comment_MODEL": "=== MODELE LLM === Provider Anthropic Claude. Pour un agent vocal temps réel, la latence de génération impacte directement le naturel de la conversation (le client ne doit pas attendre plusieurs secondes). IMPORTANT: la plateforme Vapi n'a, a ce jour, PAS encore ajoute le support de claude-sonnet-5 ni de claude-opus-4-7/4-8 (constate via une erreur 400 'model.model must be one of the following values' lors d'une creation reelle). Liste des modeles Claude actuellement acceptes par l'API Vapi: claude-3-opus-20240229, claude-3-sonnet-20240229, claude-3-haiku-20240307, claude-3-5-sonnet-20240620, claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022, claude-3-7-sonnet-20250219, claude-opus-4-20250514, claude-opus-4-5-20251101, claude-opus-4-6, claude-sonnet-4-20250514, claude-sonnet-4-5-20250929, claude-sonnet-4-6, claude-haiku-4-5-20251001. Parmi ceux-la, claude-sonnet-4-6 est le meilleur compromis qualite/latence pour une conversation telephonique. A remonter vers claude-sonnet-5 des que Vapi l'ajoutera a sa liste.",
+  "_comment_MODEL": "=== MODELE LLM === Provider Anthropic Claude. Pour un agent vocal temps réel, la latence de génération impacte directement le naturel de la conversation (le client ne doit pas attendre plusieurs secondes). IMPORTANT: la plateforme Vapi n'a, a ce jour, PAS encore ajoute le support de claude-sonnet-5 ni de claude-opus-4-7/4-8 (constate via une erreur 400 'model.model must be one of the following values' lors d'une creation reelle). Liste des modeles Claude actuellement acceptes par l'API Vapi: claude-3-opus-20240229, claude-3-sonnet-20240229, claude-3-haiku-20240307, claude-3-5-sonnet-20240620, claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022, claude-3-7-sonnet-20250219, claude-opus-4-20250514, claude-opus-4-5-20251101, claude-opus-4-6, claude-sonnet-4-20250514, claude-sonnet-4-5-20250929, claude-sonnet-4-6, claude-haiku-4-5-20251001. claude-haiku-4-5-20251001 (id exact requis par Vapi, avec la date - 'claude-haiku-4-5' seul est rejete) est choisi ici pour minimiser la latence de reponse ; claude-sonnet-4-6 reste l'alternative si la qualite de raisonnement doit primer sur la vitesse. A remonter vers claude-sonnet-5 des que Vapi l'ajoutera a sa liste.",
   "model": {
     "provider": "anthropic",
-    "model": "claude-sonnet-4-6",
-    "_comment_model_alt": "Alternative basse latence si besoin: claude-haiku-4-5-20251001 (id exact requis par Vapi, avec la date)",
+    "model": "claude-haiku-4-5-20251001",
+    "_comment_model_alt": "Alternative qualite/latence plus equilibree si besoin: claude-sonnet-4-6",
     "temperature": 0.4,
     "maxTokens": 300,
     "_comment_temperature": "Temperature basse (0.3-0.5) recommandee pour un agent metier: reponses plus previsibles, moins de digressions.",
@@ -32,10 +32,10 @@
     "_comment_voice_lang": "Verifier que la voix selectionnee est nativement francophone pour une prononciation naturelle."
   },
 
-  "_comment_TRANSCRIBER": "=== TRANSCRIPTION (Speech-to-Text) === Langue fixee au francais pour eviter les erreurs de detection automatique de langue.",
+  "_comment_TRANSCRIBER": "=== TRANSCRIPTION (Speech-to-Text) === Langue fixee explicitement au francais (language: 'fr') pour eviter les erreurs de detection automatique. Modele nova-3 (Deepgram).",
   "transcriber": {
     "provider": "deepgram",
-    "model": "nova-2",
+    "model": "nova-3",
     "language": "fr"
   },
 
