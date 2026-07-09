@@ -41,15 +41,55 @@ function formatEauCoupee(eauCoupee) {
   return 'Non applicable';
 }
 
+// Retourne la premiere valeur non vide (apres trim) parmi celles fournies, sinon
+// undefined. Vapi peut placer une meme donnee a des emplacements differents du
+// payload selon la version/le type d'evenement - on essaie chaque candidat dans
+// l'ordre plutot que de supposer un seul chemin fixe.
+function premierNonVide(...valeurs) {
+  for (const valeur of valeurs) {
+    if (typeof valeur === 'string' && valeur.trim() !== '') {
+      return valeur.trim();
+    }
+  }
+  return undefined;
+}
+
 // Extrait les champs utiles depuis le payload Vapi 'end-of-call-report'.
 // Forme attendue : { message: { type, call, customer, analysis: { summary, structuredData }, ... } }
+// mais 'call' contient aussi potentiellement son propre 'customer'/'analysis' imbrique
+// (Call Object complet) - on tente les deux emplacements pour le telephone et le resume.
 function extraireDonneesAppel(message) {
-  const structured = (message.analysis && message.analysis.structuredData) || {};
-  const resume = (message.analysis && message.analysis.summary) || message.summary || 'Non disponible';
+  const call = message.call || {};
+  const structured =
+    (message.analysis && message.analysis.structuredData) ||
+    (call.analysis && call.analysis.structuredData) ||
+    {};
+
+  // Le numero de l'appelant vient normalement des metadonnees de l'appel (fiable).
+  // Le champ structure 'telephone_client' (extrait par le LLM) est garde en dernier
+  // recours seulement : on a constate qu'il peut contenir un texte de substitution
+  // (ex: "numero de l'appelant") au lieu d'un vrai numero quand le modele ne l'a
+  // pas determine lui-meme pendant la conversation.
+  const telephoneClient =
+    premierNonVide(
+      message.customer && message.customer.number,
+      call.customer && call.customer.number,
+      structured.telephone_client
+    ) || 'Non precise';
+
+  // Le resume peut se trouver a plusieurs emplacements selon la forme exacte du
+  // webhook recu : on essaie chaque emplacement plausible dans l'ordre.
+  const resume =
+    premierNonVide(
+      message.analysis && message.analysis.summary,
+      call.analysis && call.analysis.summary,
+      message.summary,
+      call.summary
+    ) || 'Non disponible';
 
   return {
     nomClient: structured.nom_client || 'Client',
-    telephoneClient: structured.telephone_client || (message.customer && message.customer.number) || 'Non precise',
+    telephoneClient,
     adresse: structured.adresse_intervention || 'Non precisee',
     typeLogement: formatTypeLogement(structured.type_logement),
     probleme: structured.type_probleme || 'Demande de plomberie non precisee',
