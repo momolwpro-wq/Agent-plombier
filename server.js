@@ -1,7 +1,8 @@
 // =========================================================================
 // SERVEUR WEBHOOK VAPI -> TWILIO (remplace le workflow n8n)
 // Recoit les evenements Vapi sur POST /webhook, ne traite que l'evenement
-// "end-of-call-report", et envoie un SMS recapitulatif a l'artisan via Twilio.
+// "end-of-call-report", et envoie via Twilio : un SMS recapitulatif a
+// l'artisan, et un SMS de confirmation au client appelant.
 // =========================================================================
 
 require('dotenv').config();
@@ -77,6 +78,15 @@ function extraireDonneesAppel(message) {
       structured.telephone_client
     ) || 'Non precise';
 
+  // Numero reel de l'appelant, pour envoyer le SMS de confirmation CLIENT.
+  // Volontairement SANS le fallback sur structured.telephone_client (extrait par le
+  // LLM, pas garanti fiable) : si ce numero brut est absent, on ne devine pas un
+  // numero de substitution pour un SMS envoye directement au client.
+  const numeroAppelant = premierNonVide(
+    message.customer && message.customer.number,
+    call.customer && call.customer.number
+  );
+
   // Le resume peut se trouver a plusieurs emplacements selon la forme exacte du
   // webhook recu : on essaie chaque emplacement plausible dans l'ordre.
   const resume =
@@ -90,6 +100,7 @@ function extraireDonneesAppel(message) {
   return {
     nomClient: structured.nom_client || 'Client',
     telephoneClient,
+    numeroAppelant,
     adresse: structured.adresse_intervention || 'Non precisee',
     typeLogement: formatTypeLogement(structured.type_logement),
     probleme: structured.type_probleme || 'Demande de plomberie non precisee',
@@ -124,18 +135,29 @@ function construireMessageArtisan(donnees) {
   return lignes.join('\n');
 }
 
-async function envoyerSmsArtisan(texte) {
-  // Utilise un Alphanumeric Sender ID Twilio (ex: "PlombTest") plutot qu'un numero de
-  // telephone comme expediteur - evite les erreurs de correspondance pays/numero
-  // rencontrees avec un numero Twilio classique. Limites Twilio : 11 caracteres max,
-  // lettres/chiffres uniquement, sans espace, et pas de reponse possible (one-way SMS).
-  // Non supporte pour envoyer vers les Etats-Unis/Canada, mais OK pour la France.
+// Construit le SMS de confirmation envoye directement au CLIENT (numero appelant).
+// Ne prend que le premier "prenom" de nomClient (le schema structure demande "nom et
+// prenom", mais ce message n'utilise que le prenom) ; si nomClient vaut le fallback
+// generique 'Client', le message reste correct ("Bonjour Client, ...").
+function construireMessageClient(donnees) {
+  const prenom = (donnees.nomClient || 'Client').trim().split(/\s+/)[0];
+  const entreprise = COMPANY_NAME || 'Plomberie Test';
+  return `Bonjour ${prenom}, votre demande a bien été prise en compte par ${entreprise}. Un plombier vous recontactera dès que possible. Merci de votre confiance.`;
+}
+
+// Envoie un SMS via l'API REST Twilio. Utilise un Alphanumeric Sender ID (ex:
+// "PlombTest") plutot qu'un numero de telephone comme expediteur - evite les erreurs
+// de correspondance pays/numero rencontrees avec un numero Twilio classique. Limites
+// Twilio : 11 caracteres max, lettres/chiffres uniquement, sans espace, et pas de
+// reponse possible (one-way SMS). Non supporte pour envoyer vers les Etats-Unis/Canada,
+// mais OK pour la France.
+async function envoyerSms(destinataire, texte) {
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
   return axios.post(
     url,
     new URLSearchParams({
-      To: ARTISAN_PHONE_NUMBER,
+      To: destinataire,
       From: TWILIO_SENDER_ID,
       Body: texte,
     }),
@@ -162,12 +184,30 @@ app.post('/webhook', async (req, res) => {
 
   try {
     const donnees = extraireDonneesAppel(message);
-    const texteSms = construireMessageArtisan(donnees);
 
-    await envoyerSmsArtisan(texteSms);
-
+    const texteArtisan = construireMessageArtisan(donnees);
+    await envoyerSms(ARTISAN_PHONE_NUMBER, texteArtisan);
     console.log(`SMS artisan envoye (${donnees.urgence}) pour ${donnees.nomClient}.`);
-    return res.status(200).json({ status: 'ok', smsArtisanEnvoye: true });
+
+    // SMS de confirmation au CLIENT : independant du SMS artisan ci-dessus. Une erreur
+    // ici (numero absent ou echec Twilio) est loguee mais ne fait pas planter le
+    // serveur ni echouer la reponse au webhook - le SMS artisan est deja parti.
+    let smsClientEnvoye = false;
+    if (!donnees.numeroAppelant) {
+      console.error("Impossible d'envoyer le SMS de confirmation client : numero de l'appelant introuvable dans le payload Vapi (ni message.customer.number, ni message.call.customer.number).");
+    } else {
+      try {
+        const texteClient = construireMessageClient(donnees);
+        await envoyerSms(donnees.numeroAppelant, texteClient);
+        console.log(`SMS de confirmation envoye au client (${donnees.numeroAppelant}).`);
+        smsClientEnvoye = true;
+      } catch (err) {
+        const detail = err.response ? err.response.data : err.message;
+        console.error('Erreur lors de l\'envoi du SMS de confirmation au client :', detail);
+      }
+    }
+
+    return res.status(200).json({ status: 'ok', smsArtisanEnvoye: true, smsClientEnvoye });
   } catch (err) {
     const detail = err.response ? err.response.data : err.message;
     console.error('Erreur lors du traitement du webhook / envoi SMS Twilio :', detail);
