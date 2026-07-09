@@ -5,7 +5,6 @@
 // =========================================================================
 
 require('dotenv').config();
-const crypto = require('crypto');
 const express = require('express');
 const axios = require('axios');
 
@@ -14,28 +13,13 @@ const {
   BREVO_SENDER_NAME,
   ARTISAN_PHONE_NUMBER,
   COMPANY_NAME,
-  VAPI_WEBHOOK_SECRET,
   PORT,
 } = process.env;
 
-for (const [name, value] of Object.entries({ BREVO_API_KEY, BREVO_SENDER_NAME, ARTISAN_PHONE_NUMBER, VAPI_WEBHOOK_SECRET })) {
+for (const [name, value] of Object.entries({ BREVO_API_KEY, BREVO_SENDER_NAME, ARTISAN_PHONE_NUMBER })) {
   if (!value) {
-    console.warn(`ATTENTION: la variable d'environnement ${name} n'est pas definie (voir .env). ${name === 'VAPI_WEBHOOK_SECRET' ? 'Le webhook rejettera TOUTES les requetes tant que cette variable est vide.' : 'Les envois de SMS echoueront tant qu\'elle est vide.'}`);
+    console.warn(`ATTENTION: la variable d'environnement ${name} n'est pas definie (voir .env). Les envois de SMS echoueront tant qu'elle est vide.`);
   }
-}
-
-// Compare le secret recu au secret attendu en temps constant, pour eviter les
-// attaques par mesure de timing sur une comparaison naive (===).
-function secretValide(secretRecu) {
-  if (!VAPI_WEBHOOK_SECRET || !secretRecu) return false;
-
-  const attendu = Buffer.from(VAPI_WEBHOOK_SECRET);
-  const recu = Buffer.from(String(secretRecu));
-
-  // timingSafeEqual exige des buffers de meme longueur, sinon il leve une exception.
-  if (attendu.length !== recu.length) return false;
-
-  return crypto.timingSafeEqual(attendu, recu);
 }
 
 const app = express();
@@ -117,16 +101,8 @@ async function envoyerSmsArtisan(texte) {
 }
 
 app.post('/webhook', async (req, res) => {
-  // === VERIFICATION DU SECRET WEBHOOK ===
-  // Vapi envoie le secret configure (serverUrlSecret) dans l'en-tete 'x-vapi-secret'.
-  // Express normalise les noms d'en-tetes en minuscules dans req.headers, donc pas
-  // besoin de gerer plusieurs variantes de casse ici (contrairement au code n8n).
-  const secretRecu = req.headers['x-vapi-secret'];
-  if (!secretValide(secretRecu)) {
-    console.warn('Requete webhook rejetee : secret invalide ou absent.');
-    return res.status(401).json({ status: 'error', message: 'Secret webhook invalide' });
-  }
-
+  // Aucune verification d'authenticite sur cette route : tout POST /webhook est accepte,
+  // qu'il vienne reellement de Vapi ou non (voir avertissement securite communique a part).
   const message = req.body && req.body.message;
 
   // On ne traite que l'evenement de fin d'appel. Les autres evenements Vapi
