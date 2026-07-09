@@ -51,7 +51,7 @@
   "backgroundSound": "off",
 
   "_comment_VOICEMAIL": "Message laisse si l'appel tombe sur un repondeur (detection automatique par Vapi).",
-  "voicemailMessage": "Bonjour, vous avez été contacté par [A COMPLETER - Nom de l'entreprise] au sujet de votre demande de plomberie. Merci de nous rappeler au [A COMPLETER - numéro de téléphone] ou nous vous recontacterons rapidement.",
+  "voicemailMessage": "Bonjour, vous avez été contacté par Plomberie Test au sujet de votre demande de plomberie. Nous vous rappellerons dès que possible.",
 
   "_comment_ANALYSIS": "=== ANALYSE POST-APPEL === Permet a Vapi de generer un resume structure de l'appel (utilise ensuite par le workflow n8n pour composer le SMS).",
   "analysisPlan": {
