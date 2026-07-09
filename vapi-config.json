@@ -40,7 +40,7 @@
   },
 
   "_comment_BEHAVIOR": "=== COMPORTEMENT GENERAL DE L'APPEL ===",
-  "endCallMessage": "Merci de votre appel, Plomberie Test vous souhaite une bonne journée.",
+  "endCallMessage": "Merci de votre appel, vous allez recevoir un SMS de confirmation dans quelques instants. Plomberie Test vous souhaite une bonne journée.",
   "endCallPhrases": [
     "au revoir",
     "merci, à bientôt",
