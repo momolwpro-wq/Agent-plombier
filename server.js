@@ -11,13 +11,13 @@ const axios = require('axios');
 const {
   TWILIO_ACCOUNT_SID,
   TWILIO_AUTH_TOKEN,
-  TWILIO_FROM_NUMBER,
+  TWILIO_SENDER_ID,
   ARTISAN_PHONE_NUMBER,
   COMPANY_NAME,
   PORT,
 } = process.env;
 
-for (const [name, value] of Object.entries({ TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, ARTISAN_PHONE_NUMBER })) {
+for (const [name, value] of Object.entries({ TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SENDER_ID, ARTISAN_PHONE_NUMBER })) {
   if (!value) {
     console.warn(`ATTENTION: la variable d'environnement ${name} n'est pas definie (voir .env). Les envois de SMS echoueront tant qu'elle est vide.`);
   }
@@ -78,16 +78,18 @@ function construireMessageArtisan(donnees) {
 }
 
 async function envoyerSmsArtisan(texte) {
-  // Twilio attend le numero au format E.164 AVEC le '+' (ex: +33612345678) - c'est deja
-  // le format dans lequel ARTISAN_PHONE_NUMBER est renseigne dans .env, donc pas de
-  // transformation necessaire ici (contrairement a Brevo qui exigeait le '+' retire).
+  // Utilise un Alphanumeric Sender ID Twilio (ex: "PlombTest") plutot qu'un numero de
+  // telephone comme expediteur - evite les erreurs de correspondance pays/numero
+  // rencontrees avec un numero Twilio classique. Limites Twilio : 11 caracteres max,
+  // lettres/chiffres uniquement, sans espace, et pas de reponse possible (one-way SMS).
+  // Non supporte pour envoyer vers les Etats-Unis/Canada, mais OK pour la France.
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
   return axios.post(
     url,
     new URLSearchParams({
       To: ARTISAN_PHONE_NUMBER,
-      From: TWILIO_FROM_NUMBER,
+      From: TWILIO_SENDER_ID,
       Body: texte,
     }),
     {
