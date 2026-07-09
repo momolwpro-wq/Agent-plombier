@@ -101,11 +101,12 @@ function extraireDonneesAppel(message) {
 
 // Construit le SMS envoye a l'artisan. Ordre impose :
 // 1) urgence en majuscules, 2) nom client, 3) telephone, 4) adresse,
-// 5) type de logement, 6) eau coupee ou non, 7) nature du probleme, 8) resume libre.
+// 5) type de logement, 6) eau coupee ou non, 7) nature du probleme, 8) resume libre
+// (uniquement si un resume reel a ete trouve - ligne omise sinon).
 function construireMessageArtisan(donnees) {
   const urgenceLabel = donnees.urgence === 'urgent' ? 'URGENT 🔴' : 'NON URGENT 🟢';
 
-  return [
+  const lignes = [
     urgenceLabel,
     `Client : ${donnees.nomClient}`,
     `Telephone : ${donnees.telephoneClient}`,
@@ -113,8 +114,14 @@ function construireMessageArtisan(donnees) {
     `Logement : ${donnees.typeLogement}`,
     `Eau coupee : ${donnees.eauCoupee}`,
     `Probleme : ${donnees.probleme}`,
-    `Resume : ${donnees.resume}`,
-  ].join('\n');
+  ];
+
+  const resume = (donnees.resume || '').trim();
+  if (resume !== '' && resume !== 'Non disponible') {
+    lignes.push(`Resume : ${resume}`);
+  }
+
+  return lignes.join('\n');
 }
 
 async function envoyerSmsArtisan(texte) {
