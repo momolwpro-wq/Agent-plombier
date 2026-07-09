@@ -1,7 +1,7 @@
 // =========================================================================
-// SERVEUR WEBHOOK VAPI -> BREVO (remplace le workflow n8n)
+// SERVEUR WEBHOOK VAPI -> TWILIO (remplace le workflow n8n)
 // Recoit les evenements Vapi sur POST /webhook, ne traite que l'evenement
-// "end-of-call-report", et envoie un SMS recapitulatif a l'artisan via Brevo.
+// "end-of-call-report", et envoie un SMS recapitulatif a l'artisan via Twilio.
 // =========================================================================
 
 require('dotenv').config();
@@ -9,14 +9,15 @@ const express = require('express');
 const axios = require('axios');
 
 const {
-  BREVO_API_KEY,
-  BREVO_SENDER_NAME,
+  TWILIO_ACCOUNT_SID,
+  TWILIO_AUTH_TOKEN,
+  TWILIO_FROM_NUMBER,
   ARTISAN_PHONE_NUMBER,
   COMPANY_NAME,
   PORT,
 } = process.env;
 
-for (const [name, value] of Object.entries({ BREVO_API_KEY, BREVO_SENDER_NAME, ARTISAN_PHONE_NUMBER })) {
+for (const [name, value] of Object.entries({ TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, ARTISAN_PHONE_NUMBER })) {
   if (!value) {
     console.warn(`ATTENTION: la variable d'environnement ${name} n'est pas definie (voir .env). Les envois de SMS echoueront tant qu'elle est vide.`);
   }
@@ -25,11 +26,6 @@ for (const [name, value] of Object.entries({ BREVO_API_KEY, BREVO_SENDER_NAME, A
 const app = express();
 // Limite relevee car un rapport de fin d'appel Vapi peut contenir un transcript long.
 app.use(express.json({ limit: '5mb' }));
-
-// Numero de telephone au format international SANS le '+' : Brevo l'exige ainsi.
-function normalizePhone(phone) {
-  return (phone || '').replace(/[^0-9]/g, '');
-}
 
 // "appartement" -> "Appartement", chaine vide -> "Non precise"
 function formatTypeLogement(typeLogement) {
@@ -82,19 +78,22 @@ function construireMessageArtisan(donnees) {
 }
 
 async function envoyerSmsArtisan(texte) {
+  // Twilio attend le numero au format E.164 AVEC le '+' (ex: +33612345678) - c'est deja
+  // le format dans lequel ARTISAN_PHONE_NUMBER est renseigne dans .env, donc pas de
+  // transformation necessaire ici (contrairement a Brevo qui exigeait le '+' retire).
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+
   return axios.post(
-    'https://api.brevo.com/v3/transactionalSMS/sms',
+    url,
+    new URLSearchParams({
+      To: ARTISAN_PHONE_NUMBER,
+      From: TWILIO_FROM_NUMBER,
+      Body: texte,
+    }),
     {
-      sender: BREVO_SENDER_NAME,
-      recipient: normalizePhone(ARTISAN_PHONE_NUMBER),
-      content: texte,
-      type: 'transactional',
-    },
-    {
-      headers: {
-        'api-key': BREVO_API_KEY,
-        'Content-Type': 'application/json',
-        accept: 'application/json',
+      auth: {
+        username: TWILIO_ACCOUNT_SID,
+        password: TWILIO_AUTH_TOKEN,
       },
     }
   );
@@ -122,7 +121,7 @@ app.post('/webhook', async (req, res) => {
     return res.status(200).json({ status: 'ok', smsArtisanEnvoye: true });
   } catch (err) {
     const detail = err.response ? err.response.data : err.message;
-    console.error('Erreur lors du traitement du webhook / envoi SMS Brevo :', detail);
+    console.error('Erreur lors du traitement du webhook / envoi SMS Twilio :', detail);
     return res.status(500).json({ status: 'error', message: 'Echec du traitement du webhook, voir logs serveur' });
   }
 });
@@ -134,5 +133,5 @@ app.get('/health', (req, res) => {
 
 const port = PORT || 3000;
 app.listen(port, () => {
-  console.log(`Serveur webhook Vapi -> Brevo demarre sur le port ${port} (POST /webhook)`);
+  console.log(`Serveur webhook Vapi -> Twilio demarre sur le port ${port} (POST /webhook)`);
 });
