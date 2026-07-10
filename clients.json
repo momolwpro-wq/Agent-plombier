@@ -1,0 +1,14 @@
+{
+  "clients": [
+    {
+      "assistantId": "4bdb7042-9abb-4bc7-bcdd-e3a9049fcbf8",
+      "companyName": "Plomberie Test",
+      "artisanName": "Test",
+      "artisanPhoneNumber": "+33625255756",
+      "twilioFromNumber": "PlombTest",
+      "zone": "Île-de-France",
+      "horaires": "lundi-vendredi 8h-18h",
+      "faq": []
+    }
+  ]
+}
