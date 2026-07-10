@@ -135,6 +135,7 @@ function extraireDonneesAppel(message) {
     telephoneClient,
     numeroAppelant,
     adresse: structured.adresse_intervention || 'Non precisee',
+    codePostal: structured.code_postal || 'Non precise',
     typeLogement: formatTypeLogement(structured.type_logement),
     probleme: structured.type_probleme || 'Demande de plomberie non precisee',
     urgence: (structured.niveau_urgence || 'non_urgent').toLowerCase(),
@@ -144,8 +145,8 @@ function extraireDonneesAppel(message) {
 }
 
 // Construit le SMS envoye a l'artisan. Ordre impose :
-// 1) urgence en majuscules, 2) nom client, 3) telephone, 4) adresse,
-// 5) type de logement, 6) eau coupee ou non, 7) nature du probleme, 8) resume libre
+// 1) urgence en majuscules, 2) nom client, 3) telephone, 4) adresse, 5) code postal,
+// 6) type de logement, 7) eau coupee ou non, 8) nature du probleme, 9) resume libre
 // (uniquement si un resume reel a ete trouve - ligne omise sinon).
 function construireMessageArtisan(donnees) {
   const urgenceLabel = donnees.urgence === 'urgent' ? 'URGENT 🔴' : 'NON URGENT 🟢';
@@ -155,6 +156,7 @@ function construireMessageArtisan(donnees) {
     `Client : ${donnees.nomClient}`,
     `Telephone : ${donnees.telephoneClient}`,
     `Adresse : ${donnees.adresse}`,
+    `Code postal : ${donnees.codePostal}`,
     `Logement : ${donnees.typeLogement}`,
     `Eau coupee : ${donnees.eauCoupee}`,
     `Probleme : ${donnees.probleme}`,

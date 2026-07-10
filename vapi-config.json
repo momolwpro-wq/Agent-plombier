@@ -74,6 +74,7 @@
           "nom_client": { "type": "string", "description": "Nom et prénom du client" },
           "telephone_client": { "type": "string", "description": "Numéro de téléphone de rappel du client" },
           "adresse_intervention": { "type": "string", "description": "Adresse complète de l'intervention" },
+          "code_postal": { "type": "string", "description": "Code postal de l'intervention" },
           "type_logement": { "type": "string", "enum": ["appartement", "maison"], "description": "Type de logement : appartement ou maison" },
           "type_probleme": { "type": "string", "description": "Nature du problème de plomberie (ex: fuite active, dégât des eaux, canalisation bouchée, problème de pression, WC bouché, joint qui lâche, chauffe-eau qui fuit)" },
           "niveau_urgence": { "type": "string", "enum": ["urgent", "non_urgent"], "description": "Niveau d'urgence évalué pendant l'appel selon les critères URGENT/NON URGENT du prompt système" },
@@ -82,7 +83,7 @@
           "creneau_propose": { "type": "string", "description": "Créneau de rendez-vous proposé ou confirmé, vide si non applicable" },
           "rappel_necessaire": { "type": "boolean", "description": "True si l'artisan doit rappeler le client" }
         },
-        "required": ["nom_client", "telephone_client", "type_probleme", "niveau_urgence", "type_logement", "eau_coupee"]
+        "required": ["nom_client", "telephone_client", "code_postal", "type_probleme", "niveau_urgence", "type_logement", "eau_coupee"]
       }
     },
     "successEvaluationPlan": {
