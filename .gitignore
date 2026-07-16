@@ -7,3 +7,7 @@ node_modules
 # Contient un secret en clair (cle API Brevo) et le numero perso de l'artisan -
 # ne jamais committer sur un depot public. Garder ce fichier en local uniquement.
 workflow-n8n.json
+
+# Journal des appels (noms clients, adresses, telephones) - donnees personnelles reelles,
+# ne jamais committer sur un depot public. Genere localement/sur Railway par server.js.
+data/

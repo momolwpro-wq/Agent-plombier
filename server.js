@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const axios = require('axios');
+const cron = require('node-cron');
 
 // TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN restent globaux : un seul compte Twilio
 // partage par tous les clients (voir dossier-mise-en-place-client.md, section 3/7).
@@ -45,6 +46,32 @@ function chargerClients() {
 }
 
 const clientsParAssistantId = chargerClients();
+
+// === STOCKAGE DES APPELS ===
+// Journal simple (fichier JSON, tableau d'objets) de tous les appels traites, utilise
+// par le recap hebdomadaire. Ecriture synchrone lecture-modification-ecriture : suffisant
+// vu le faible volume attendu (pas de verrouillage/concurrence geree, non necessaire a
+// cette echelle - voir dossier-mise-en-place-client.md pour les seuils de scaling).
+const CHEMIN_DONNEES = path.join(__dirname, 'data');
+const CHEMIN_APPELS = path.join(CHEMIN_DONNEES, 'appels.json');
+fs.mkdirSync(CHEMIN_DONNEES, { recursive: true });
+
+function chargerAppels() {
+  try {
+    if (!fs.existsSync(CHEMIN_APPELS)) return [];
+    const data = JSON.parse(fs.readFileSync(CHEMIN_APPELS, 'utf8'));
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn(`ATTENTION: impossible de lire ${CHEMIN_APPELS} (${err.message}).`);
+    return [];
+  }
+}
+
+function enregistrerAppel(enregistrement) {
+  const appels = chargerAppels();
+  appels.push(enregistrement);
+  fs.writeFileSync(CHEMIN_APPELS, JSON.stringify(appels, null, 2) + '\n');
+}
 
 const app = express();
 // Limite relevee car un rapport de fin d'appel Vapi peut contenir un transcript long.
@@ -86,6 +113,19 @@ function extraireAssistantId(message) {
     message.call && message.call.assistantId,
     message.assistantId
   );
+}
+
+// Duree de l'appel en secondes, calculee a partir de call.startedAt/call.endedAt (Vapi
+// ne fournit pas de champ duree pre-calcule - voir doc Call Object). Renvoie null si
+// l'un des deux timestamps est absent/invalide ("si disponible" dans le payload).
+function extraireDureeSecondes(message, call) {
+  const debut = premierNonVide(call.startedAt, message.startedAt);
+  const fin = premierNonVide(call.endedAt, message.endedAt);
+  if (!debut || !fin) return null;
+  const debutMs = Date.parse(debut);
+  const finMs = Date.parse(fin);
+  if (Number.isNaN(debutMs) || Number.isNaN(finMs)) return null;
+  return Math.max(0, Math.round((finMs - debutMs) / 1000));
 }
 
 // Extrait les champs utiles depuis le payload Vapi 'end-of-call-report'.
@@ -130,6 +170,11 @@ function extraireDonneesAppel(message) {
       call.summary
     ) || 'Non disponible';
 
+  // Date/heure de l'appel : fin d'appel (call.endedAt) si disponible, sinon l'instant
+  // ou ce webhook est traite par notre serveur.
+  const dateAppel = premierNonVide(call.endedAt, message.endedAt) || new Date().toISOString();
+  const dureeSecondes = extraireDureeSecondes(message, call);
+
   return {
     nomClient: structured.nom_client || 'Client',
     telephoneClient,
@@ -141,6 +186,8 @@ function extraireDonneesAppel(message) {
     urgence: (structured.niveau_urgence || 'non_urgent').toLowerCase(),
     eauCoupee: formatEauCoupee(structured.eau_coupee),
     resume,
+    dateAppel,
+    dureeSecondes,
   };
 }
 
@@ -225,6 +272,21 @@ app.post('/webhook', async (req, res) => {
   try {
     const donnees = extraireDonneesAppel(message);
 
+    // Stockage de l'appel (journal pour le recap hebdomadaire). Une erreur ici est
+    // loguee mais ne bloque jamais l'envoi des SMS ci-dessous.
+    try {
+      enregistrerAppel({
+        date: donnees.dateAppel,
+        assistantId,
+        nomClient: donnees.nomClient,
+        urgence: donnees.urgence === 'urgent' ? 'URGENT' : 'NON URGENT',
+        dureeSecondes: donnees.dureeSecondes,
+        adresse: donnees.adresse,
+      });
+    } catch (err) {
+      console.warn(`ATTENTION: echec de l'enregistrement de l'appel dans ${CHEMIN_APPELS} : ${err.message}`);
+    }
+
     const texteArtisan = construireMessageArtisan(donnees);
     await envoyerSms(client.artisanPhoneNumber, client.twilioFromNumber, texteArtisan);
     console.log(`SMS artisan envoye (${donnees.urgence}) pour ${donnees.nomClient} [client: ${client.companyName}].`);
@@ -261,6 +323,70 @@ app.post('/webhook', async (req, res) => {
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', clientsCharges: clientsParAssistantId.size });
 });
+
+// === RECAP HEBDOMADAIRE ===
+
+// Debut (approx.) de la semaine courante. Suppose que cette fonction est appelee un
+// vendredi (le job cron ci-dessous ne tourne que ce jour-la) : "lundi" est donc toujours
+// a 4 jours avant "maintenant". Approximation en jours civils UTC plutot qu'en minuit
+// exact heure de Paris - peut deriver d'1h autour d'un changement d'heure (DST),
+// acceptable pour un recap hebdomadaire non-critique (pas un calcul de facturation).
+function debutSemaineCourante(maintenant) {
+  const JOURS_DEPUIS_LUNDI_UN_VENDREDI = 4;
+  const debut = new Date(maintenant);
+  debut.setUTCDate(debut.getUTCDate() - JOURS_DEPUIS_LUNDI_UN_VENDREDI);
+  debut.setUTCHours(0, 0, 0, 0);
+  return debut;
+}
+
+// Pour chaque client du registre, calcule le bilan de la semaine ecoulee a partir de
+// data/appels.json et envoie un SMS recap a l'artisan. Chaque envoi est independant :
+// l'echec d'un client (numero/expediteur invalide, etc.) n'empeche pas les suivants.
+async function envoyerRecapHebdomadaire() {
+  console.log('Demarrage du recap hebdomadaire...');
+  const maintenant = new Date();
+  const debutSemaine = debutSemaineCourante(maintenant);
+  const tousLesAppels = chargerAppels();
+
+  for (const client of clientsParAssistantId.values()) {
+    const appelsClient = tousLesAppels.filter((appel) => {
+      if (appel.assistantId !== client.assistantId) return false;
+      const instant = Date.parse(appel.date);
+      return !Number.isNaN(instant) && instant >= debutSemaine.getTime() && instant <= maintenant.getTime();
+    });
+
+    const total = appelsClient.length;
+    const urgences = appelsClient.filter((appel) => appel.urgence === 'URGENT').length;
+    const nonUrgences = total - urgences;
+    const minutesEconomisees = total * 3;
+    const prenomArtisan = (client.artisanName || 'artisan').trim().split(/\s+/)[0];
+
+    const texte = [
+      `Bonjour ${prenomArtisan}, voici le bilan Callago de cette semaine :`,
+      `📞 ${total} appels pris en charge`,
+      `🔴 ${urgences} urgences signalées`,
+      `🟢 ${nonUrgences} demandes non urgentes`,
+      `⏱ ~${minutesEconomisees} minutes économisées`,
+      `À la semaine prochaine — Callago`,
+    ].join('\n');
+
+    try {
+      await envoyerSms(client.artisanPhoneNumber, client.twilioFromNumber, texte);
+      console.log(`Recap hebdomadaire envoye a ${client.companyName} (${total} appels).`);
+    } catch (err) {
+      const detail = err.response ? err.response.data : err.message;
+      console.error(`Erreur lors de l'envoi du recap hebdomadaire a ${client.companyName} :`, detail);
+    }
+  }
+
+  console.log('Recap hebdomadaire termine.');
+}
+
+// Planifie le recap chaque vendredi a 18h00, heure de Paris (node-cron gere le DST
+// via l'option timezone). Si JOURS_DEPUIS_LUNDI_UN_VENDREDI ci-dessus doit changer,
+// mettre a jour cette expression cron en meme temps (elle doit rester un vendredi).
+cron.schedule('0 18 * * 5', envoyerRecapHebdomadaire, { timezone: 'Europe/Paris' });
+console.log('Job recap hebdomadaire planifie : chaque vendredi a 18h00 (Europe/Paris).');
 
 const port = PORT || 3000;
 app.listen(port, () => {
