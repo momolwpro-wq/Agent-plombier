@@ -342,6 +342,10 @@ function debutSemaineCourante(maintenant) {
 // Pour chaque client du registre, calcule le bilan de la semaine ecoulee a partir de
 // data/appels.json et envoie un SMS recap a l'artisan. Chaque envoi est independant :
 // l'echec d'un client (numero/expediteur invalide, etc.) n'empeche pas les suivants.
+// Sous ce seuil, le recap hebdomadaire n'est pas envoye (evite de deranger l'artisan
+// pour une semaine quasi vide).
+const SEUIL_MINIMUM_APPELS_RECAP = 5;
+
 async function envoyerRecapHebdomadaire() {
   console.log('Demarrage du recap hebdomadaire...');
   const maintenant = new Date();
@@ -356,6 +360,11 @@ async function envoyerRecapHebdomadaire() {
     });
 
     const total = appelsClient.length;
+    if (total < SEUIL_MINIMUM_APPELS_RECAP) {
+      console.log(`Pas assez d'appels cette semaine pour ${client.companyName} — recap non envoyé`);
+      continue;
+    }
+
     const urgences = appelsClient.filter((appel) => appel.urgence === 'URGENT').length;
     const nonUrgences = total - urgences;
     const minutesEconomisees = total * 3;
