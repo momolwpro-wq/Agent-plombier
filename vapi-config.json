@@ -25,12 +25,7 @@
 
   "firstMessageMode": "assistant-speaks-first",
 
-  "_comment_VOICE": "=== VOIX === Choisir un provider/voix supportant le francais avec une latence faible. Exemple ci-dessous avec ElevenLabs (a adapter selon le provider choisi dans Vapi: elevenlabs, azure, playht, cartesia...).",
-  "voice": {
-    "provider": "11labs",
-    "voiceId": "RmxapHk6cQZyqCCQety7",
-    "_comment_voice_lang": "Voix 'Mara' (ElevenLabs, langue fr) - confirmee via GET /v1/voices sur le compte ElevenLabs lie a Vapi."
-  },
+  "_comment_VOICE": "=== VOIX === Champ voice retire (PATCH voice: null) - l'assistant utilise la voix par defaut de Vapi. Ancienne valeur : provider 11labs, voiceId RmxapHk6cQZyqCCQety7 (voix 'Mara', fr). Pour la remettre : reajouter le bloc voice ici + PATCH.",
 
   "_comment_TRANSCRIBER": "=== TRANSCRIPTION (Speech-to-Text) === Langue fixee explicitement au francais (language: 'fr') pour eviter les erreurs de detection automatique. Modele nova-3 (Deepgram).",
   "transcriber": {
