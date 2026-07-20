@@ -12,6 +12,11 @@ const express = require('express');
 const axios = require('axios');
 const cron = require('node-cron');
 
+// TEST_MODE: quand true, aucun SMS n'est reellement envoye via Twilio (artisan, client,
+// recap hebdomadaire compris) - un log remplace l'appel API. Remettre a false avant
+// une mise en production reelle, sinon AUCUN SMS ne partira sur Railway.
+const TEST_MODE = true;
+
 // TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN restent globaux : un seul compte Twilio
 // partage par tous les clients (voir dossier-mise-en-place-client.md, section 3/7).
 // COMPANY_NAME, ARTISAN_PHONE_NUMBER, TWILIO_SENDER_ID ne sont plus lus depuis
@@ -230,6 +235,11 @@ function construireMessageClient(donnees, entreprise) {
 // (client.twilioFromNumber depuis clients.json) plutot que fixe pour tout le monde -
 // voir la note en tete de fichier sur le compte Twilio partage / expediteur par client.
 async function envoyerSms(destinataire, expediteur, texte) {
+  if (TEST_MODE) {
+    console.log('TEST_MODE: SMS non envoyé');
+    return;
+  }
+
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
   return axios.post(
