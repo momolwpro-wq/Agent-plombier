@@ -28,8 +28,8 @@
   "_comment_VOICE": "=== VOIX === Choisir un provider/voix supportant le francais avec une latence faible. Exemple ci-dessous avec ElevenLabs (a adapter selon le provider choisi dans Vapi: elevenlabs, azure, playht, cartesia...).",
   "voice": {
     "provider": "11labs",
-    "voiceId": "[A COMPLETER - ID de la voix francophone choisie dans Vapi/ElevenLabs]",
-    "_comment_voice_lang": "Verifier que la voix selectionnee est nativement francophone pour une prononciation naturelle."
+    "voiceId": "RmxapHk6cQZyqCCQety7",
+    "_comment_voice_lang": "Voix 'Mara' (ElevenLabs, langue fr) - confirmee via GET /v1/voices sur le compte ElevenLabs lie a Vapi."
   },
 
   "_comment_TRANSCRIBER": "=== TRANSCRIPTION (Speech-to-Text) === Langue fixee explicitement au francais (language: 'fr') pour eviter les erreurs de detection automatique. Modele nova-3 (Deepgram).",

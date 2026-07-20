@@ -25,7 +25,12 @@
 
   "firstMessageMode": "assistant-speaks-first",
 
-  "_comment_VOICE": "=== VOIX === Choisir un provider/voix supportant le francais avec une latence faible. Ce template ne definit pas de voice.voiceId (Vapi applique sa voix par defaut a la creation) - a choisir manuellement dans le dashboard Vapi apres onboarding, puis PATCH si besoin.",
+  "_comment_VOICE": "=== VOIX === Voix 'Mara' (ElevenLabs, langue fr), confirmee via GET /v1/voices sur le compte ElevenLabs lie a Vapi - reutilisee par defaut pour chaque nouveau client onboarde via ce template. Changer voiceId ici si un client doit avoir une voix differente (puis PATCH l'assistant deja cree si le changement doit s'appliquer retroactivement).",
+  "voice": {
+    "provider": "11labs",
+    "voiceId": "RmxapHk6cQZyqCCQety7"
+  },
+
 
   "_comment_TRANSCRIBER": "=== TRANSCRIPTION (Speech-to-Text) === Langue fixee explicitement au francais (language: 'fr') pour eviter les erreurs de detection automatique. Modele nova-3 (Deepgram).",
   "transcriber": {
