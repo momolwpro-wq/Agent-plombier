@@ -40,12 +40,13 @@
 
   "_comment_BEHAVIOR": "=== COMPORTEMENT GENERAL DE L'APPEL ===",
   "endCallMessage": "Merci de votre appel, vous allez recevoir un SMS de confirmation dans quelques instants. Plomberie Test vous souhaite une bonne journée.",
+  "_comment_ENDCALLPHRASES": "Phrases volontairement longues et composees (pas de mot isole comme 'merci' ou 'bonne journee', trop courants en cours de conversation normale) pour eviter qu'une fin d'appel se declenche prematurement quand l'assistant ou le client emploie ces mots sans dire au revoir.",
   "endCallPhrases": [
     "au revoir",
     "merci, à bientôt",
-    "bonne journée"
+    "je vous souhaite une bonne journée"
   ],
-  "silenceTimeoutSeconds": 30,
+  "silenceTimeoutSeconds": 60,
   "maxDurationSeconds": 900,
   "backgroundSound": "off",
 
