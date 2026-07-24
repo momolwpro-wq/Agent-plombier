@@ -25,7 +25,12 @@
 
   "firstMessageMode": "assistant-speaks-first",
 
-  "_comment_VOICE": "=== VOIX === Champ voice retire (PATCH voice: null) - l'assistant utilise la voix par defaut de Vapi. Ancienne valeur : provider 11labs, voiceId RmxapHk6cQZyqCCQety7 (voix 'Mara', fr). Pour la remettre : reajouter le bloc voice ici + PATCH.",
+  "_comment_VOICE": "=== VOIX === Voix '1000Histoire' (ElevenLabs, langue fr), confirmee via GET /v1/voices sur le compte ElevenLabs lie a Vapi. Modele 'eleven_multilingual_v2' precise explicitement.",
+  "voice": {
+    "provider": "11labs",
+    "voiceId": "1i2lKt2BabE0SplvfLF9",
+    "model": "eleven_multilingual_v2"
+  },
 
   "_comment_TRANSCRIBER": "=== TRANSCRIPTION (Speech-to-Text) === Langue fixee explicitement au francais (language: 'fr') pour eviter les erreurs de detection automatique. Modele nova-3 (Deepgram).",
   "transcriber": {
