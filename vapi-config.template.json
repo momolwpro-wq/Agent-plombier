@@ -47,7 +47,7 @@
     "bonne journée"
   ],
   "silenceTimeoutSeconds": 30,
-  "maxDurationSeconds": 600,
+  "maxDurationSeconds": 900,
   "backgroundSound": "off",
 
   "_comment_VOICEMAIL": "Message laisse si l'appel tombe sur un repondeur (detection automatique par Vapi).",

@@ -8,7 +8,8 @@
       "twilioFromNumber": "PlombTest",
       "zone": "Île-de-France",
       "horaires": "lundi-vendredi 8h-18h",
-      "faq": []
+      "faq": [],
+      "maxDurationSeconds": 900
     }
   ]
 }
