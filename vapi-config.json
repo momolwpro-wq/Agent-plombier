@@ -25,11 +25,10 @@
 
   "firstMessageMode": "assistant-speaks-first",
 
-  "_comment_VOICE": "=== VOIX === Voix '1000Histoire' (ElevenLabs, langue fr), confirmee via GET /v1/voices sur le compte ElevenLabs lie a Vapi. Modele 'eleven_multilingual_v2' precise explicitement.",
+  "_comment_VOICE": "=== VOIX === Voix Azure native 'fr-FR-DeniseNeural' (Microsoft Neural TTS francais), utilisee car les voix ElevenLabs custom (Mara, 1000Histoire) causaient des plantages sur les appels reels malgre des PATCH reussis. Provider natif Vapi, pas besoin de compte ElevenLabs externe.",
   "voice": {
-    "provider": "11labs",
-    "voiceId": "1i2lKt2BabE0SplvfLF9",
-    "model": "eleven_multilingual_v2"
+    "provider": "azure",
+    "voiceId": "fr-FR-DeniseNeural"
   },
 
   "_comment_TRANSCRIBER": "=== TRANSCRIPTION (Speech-to-Text) === Langue fixee explicitement au francais (language: 'fr') pour eviter les erreurs de detection automatique. Modele nova-3 (Deepgram).",
