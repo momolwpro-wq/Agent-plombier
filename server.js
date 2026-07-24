@@ -261,26 +261,36 @@ async function envoyerSms(destinataire, expediteur, texte) {
 app.post('/webhook', async (req, res) => {
   // Aucune verification d'authenticite sur cette route : tout POST /webhook est accepte,
   // qu'il vienne reellement de Vapi ou non (voir avertissement securite communique a part).
+  const debutTraitement = Date.now();
   const message = req.body && req.body.message;
+
+  // Log systematique de chaque requete recue, y compris les evenements ignores : permet
+  // de confirmer dans les logs Railway que Vapi atteint bien /webhook, meme quand aucun
+  // SMS n'est envoye (utile pour diagnostiquer un appel qui coupe sans erreur visible).
+  console.log(`[webhook] requete recue a ${new Date(debutTraitement).toISOString()} - type=${message ? message.type : 'INCONNU (pas de champ message)'} - taille body=${JSON.stringify(req.body || {}).length} octets`);
 
   // On ne traite que l'evenement de fin d'appel. Les autres evenements Vapi
   // (assistant-request, speech-update, transcript, status-update, ...) sont
   // acquittes sans action, sans erreur.
   if (!message || message.type !== 'end-of-call-report') {
+    console.log(`[webhook] evenement ignore (type=${message ? message.type : 'absent'}) - reponse 200 envoyee en ${Date.now() - debutTraitement}ms`);
     return res.status(200).json({ status: 'ignored', reason: 'evenement non traite (pas end-of-call-report)' });
   }
 
   // Identifie a quel client (registre clients.json) cet appel appartient.
   const assistantId = extraireAssistantId(message);
+  console.log(`[webhook] end-of-call-report recu - assistantId=${assistantId || 'INTROUVABLE'} - callId=${(message.call && message.call.id) || 'inconnu'}`);
   const client = assistantId ? clientsParAssistantId.get(assistantId) : undefined;
 
   if (!client) {
-    console.error(`Aucun client trouvé pour assistantId: ${assistantId}`);
+    console.error(`[webhook] Aucun client trouvé pour assistantId: ${assistantId} - reponse 200 envoyee en ${Date.now() - debutTraitement}ms`);
     return res.status(200).json({ status: 'ignored', reason: 'client inconnu', assistantId: assistantId || null });
   }
 
   try {
+    console.log(`[webhook] extraction des donnees d'appel pour client=${client.companyName}...`);
     const donnees = extraireDonneesAppel(message);
+    console.log(`[webhook] donnees extraites - urgence=${donnees.urgence} probleme="${donnees.probleme}" duree=${donnees.dureeSecondes}s`);
 
     // Stockage de l'appel (journal pour le recap hebdomadaire). Une erreur ici est
     // loguee mais ne bloque jamais l'envoi des SMS ci-dessous.
@@ -293,10 +303,12 @@ app.post('/webhook', async (req, res) => {
         dureeSecondes: donnees.dureeSecondes,
         adresse: donnees.adresse,
       });
+      console.log('[webhook] appel enregistre dans data/appels.json.');
     } catch (err) {
       console.warn(`ATTENTION: echec de l'enregistrement de l'appel dans ${CHEMIN_APPELS} : ${err.message}`);
     }
 
+    console.log('[webhook] envoi du SMS artisan...');
     const texteArtisan = construireMessageArtisan(donnees);
     await envoyerSms(client.artisanPhoneNumber, client.twilioFromNumber, texteArtisan);
     console.log(`SMS artisan envoye (${donnees.urgence}) pour ${donnees.nomClient} [client: ${client.companyName}].`);
@@ -309,6 +321,7 @@ app.post('/webhook', async (req, res) => {
       console.error("Impossible d'envoyer le SMS de confirmation client : numero de l'appelant introuvable dans le payload Vapi (ni message.customer.number, ni message.call.customer.number).");
     } else {
       try {
+        console.log('[webhook] envoi du SMS de confirmation client...');
         const texteClient = construireMessageClient(donnees, client.companyName);
         await envoyerSms(donnees.numeroAppelant, client.twilioFromNumber, texteClient);
         console.log(`SMS de confirmation envoye au client (${donnees.numeroAppelant}).`);
@@ -319,10 +332,11 @@ app.post('/webhook', async (req, res) => {
       }
     }
 
+    console.log(`[webhook] traitement termine avec succes en ${Date.now() - debutTraitement}ms.`);
     return res.status(200).json({ status: 'ok', smsArtisanEnvoye: true, smsClientEnvoye });
   } catch (err) {
-    const detail = err.response ? err.response.data : err.message;
-    console.error('Erreur lors du traitement du webhook / envoi SMS Twilio :', detail);
+    const detail = err.response ? err.response.data : (err.stack || err.message);
+    console.error(`[webhook] Erreur lors du traitement du webhook / envoi SMS Twilio (apres ${Date.now() - debutTraitement}ms) :`, detail);
     return res.status(500).json({ status: 'error', message: 'Echec du traitement du webhook, voir logs serveur' });
   }
 });
@@ -406,6 +420,18 @@ async function envoyerRecapHebdomadaire() {
 // mettre a jour cette expression cron en meme temps (elle doit rester un vendredi).
 cron.schedule('0 18 * * 5', envoyerRecapHebdomadaire, { timezone: 'Europe/Paris' });
 console.log('Job recap hebdomadaire planifie : chaque vendredi a 18h00 (Europe/Paris).');
+
+// Sans ces handlers, une exception non attrapee ou une promesse rejetee sans .catch()
+// tue le processus Node en silence sur Railway (le service redemarre, mais sans aucune
+// ligne de log expliquant pourquoi) - ils rendent visible tout crash serveur qui
+// pourrait expliquer un webhook jamais traite ou un appel qui semble "couper" sans
+// erreur 500 associee dans /webhook.
+process.on('uncaughtException', (err) => {
+  console.error('[process] Exception non attrapee - le serveur va probablement redemarrer :', err.stack || err.message);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('[process] Promesse rejetee sans gestion :', err && err.stack ? err.stack : err);
+});
 
 const port = PORT || 3000;
 app.listen(port, () => {
