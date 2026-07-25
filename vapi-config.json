@@ -61,7 +61,7 @@
       "messages": [
         {
           "role": "system",
-          "content": "Résume cet appel en français en 2-3 phrases maximum, à destination d'un SMS de confirmation envoyé au client. Inclus : le type de problème de plomberie signalé (fuite active, dégât des eaux, canalisation bouchée, problème de pression, WC bouché, joint qui lâche, chauffe-eau qui fuit, ou autre), le niveau d'urgence (URGENT/NON URGENT), le type de logement, si l'eau a été coupée ou non le cas échéant, l'adresse si mentionnée, et le créneau de rendez-vous proposé ou convenu si applicable."
+          "content": "Résume cet appel en français en 2 lignes courtes MAXIMUM, à destination d'un SMS envoyé à l'artisan. Ne donne QUE l'essentiel : ligne 1 le niveau d'urgence (URGENT/NON URGENT), ligne 2 le type de problème de plomberie signalé (fuite active, dégât des eaux, canalisation bouchée, problème de pression, WC bouché, joint qui lâche, chauffe-eau qui fuit, ou autre). N'inclus rien d'autre (pas de type de logement, pas d'adresse, pas de créneau, pas de phrase d'introduction ou de conclusion)."
         }
       ]
     },
