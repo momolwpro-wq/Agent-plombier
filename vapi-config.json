@@ -40,6 +40,10 @@
     "je vous souhaite une bonne journée"
   ],
   "silenceTimeoutSeconds": 60,
+  "_comment_STARTSPEAKINGPLAN": "Delai d'attente (en secondes) apres la fin de parole detectee du client avant que l'assistant ne commence a repondre - evite de couper le client sur une pause courte en milieu de phrase (numero de telephone, explication du probleme).",
+  "startSpeakingPlan": {
+    "waitSeconds": 0.6
+  },
   "maxDurationSeconds": 900,
   "backgroundSound": "off",
   "_comment_VOICEMAIL": "Message laisse si l'appel tombe sur un repondeur (detection automatique par Vapi).",
