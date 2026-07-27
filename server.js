@@ -15,7 +15,7 @@ const cron = require('node-cron');
 // TEST_MODE: quand true, aucun SMS n'est reellement envoye via Twilio (artisan, client,
 // recap hebdomadaire compris) - un log remplace l'appel API. Remettre a false avant
 // une mise en production reelle, sinon AUCUN SMS ne partira sur Railway.
-const TEST_MODE = false;
+const TEST_MODE = true;
 
 // TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN restent globaux : un seul compte Twilio
 // partage par tous les clients (voir dossier-mise-en-place-client.md, section 3/7).
